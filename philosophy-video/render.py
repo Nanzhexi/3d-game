@@ -149,11 +149,12 @@ def ridge(seed, base, amp, n=7):
     rng = random.Random(seed)
     waves = [(rng.uniform(0.002, 0.012) * (k + 1) ** 0.6, rng.random() * 6.28, amp / (k + 1) ** 0.9)
              for k in range(n)]
-    return [(x, base - sum(a * (0.5 + 0.5 * math.sin(f * x + p)) for f, p, a in waves))
+    # 1-|sin| 形成尖锐的山脊
+    return [(x, base - sum(a * (1 - abs(math.sin(f * x + p))) ** 1.15 for f, p, a in waves))
             for x in range(-20, W + 40, 12)]
 
 
-MOUNTAINS = [ridge(1, 660, 330), ridge(2, 690, 220), ridge(3, 710, 120)]
+MOUNTAINS = [ridge(1, 660, 250), ridge(2, 690, 170), ridge(3, 710, 95)]
 
 
 # ================================================================== 各场景
@@ -637,6 +638,7 @@ def scene_serpent(cv, c):
     cv.save()
     cv.translate(shake, 0)
     N = 150
+    segs = []
     for i in range(N, -1, -1):
         s = i / N
         is_head = s < 0.08
@@ -649,10 +651,15 @@ def scene_serpent(cv, c):
             x += (rng.random() - 0.5) * 400 * after
             y += (rng.random() - 0.5) * 400 * after
         rad = 34 * (1 - s) ** 0.5 * (0.6 + 0.4 * math.sin(min(1, s * 12) * 1.57)) + 3
-        cv.drawCircle(x, y, rad + 2, paint((0.20, 0.30, 0.22), 0.6 * a))
+        segs.append((i, x, y, rad, a))
+    # 先画全部轮廓再画填充，只留下外缘的一圈微光
+    for i, x, y, rad, a in segs:
+        cv.drawCircle(x, y, rad + 2.5, paint((0.20, 0.30, 0.22), 0.7 * a))
+    for i, x, y, rad, a in segs:
         cv.drawCircle(x, y, rad, paint((0.015, 0.02, 0.018), a))
-        if i % 6 == 0:
-            cv.drawCircle(x - rad * 0.3, y - rad * 0.3, rad * 0.25, paint((0.35, 0.45, 0.38), 0.25 * a))
+    for i, x, y, rad, a in segs:
+        if i % 5 == 0:
+            cv.drawCircle(x - rad * 0.3, y - rad * 0.35, rad * 0.22, paint((0.35, 0.45, 0.38), 0.18 * a))
     hx, hy = serpent_spine(t, 0.0, tight, head_off)
     cv.drawCircle(hx, hy, 5, paint(CRIMSON, head_alpha))
     cv.restore()
@@ -728,9 +735,11 @@ def scene_amor(cv, c):
 def build_web():
     rng = random.Random(1888)
     nodes = []
-    while len(nodes) < 58:
+    for _ in range(20000):
+        if len(nodes) >= 46:
+            break
         x, y = rng.uniform(180, W - 180), rng.uniform(130, H - 230)
-        if all((x - a) ** 2 + (y - b) ** 2 > 130 ** 2 for a, b, _ in nodes):
+        if all((x - a) ** 2 + (y - b) ** 2 > 120 ** 2 for a, b, _ in nodes):
             nodes.append((x, y, rng.random() < 0.45))
     edges = set()
     for i, (x, y, _) in enumerate(nodes):
