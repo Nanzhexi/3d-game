@@ -1,3 +1,4 @@
 philosophy-video/build/
 philosophy-video/assets/
 __pycache__/
+philosophy-video/output/*_share.mp4
